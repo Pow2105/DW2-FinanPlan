@@ -11,15 +11,15 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // Esto solo define la ESTRUCTURA de la tabla 'categorias'
         Schema::create('categorias', function (Blueprint $table) {
-    $table->id('id_categoria'); // o solo $table->id(); si prefieres
-    $table->string('nombre');
-    $table->string('icono')->nullable();
-    $table->string('color')->nullable();
-    $table->enum('tipo', ['ingreso', 'gasto']);
-    $table->timestamps();
-});
-
+            $table->id('id_categoria');
+            $table->string('nombre', 100);
+            $table->enum('tipo', ['ingreso', 'gasto']);
+            $table->string('color', 7)->nullable(); // Ej: #FFFFFF
+            $table->string('icono', 50)->nullable(); // Ej: 'fa-car'
+            $table->timestamps();
+        });
     }
 
     /**

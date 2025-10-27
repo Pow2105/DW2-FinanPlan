@@ -13,7 +13,6 @@ class InformeController extends Controller
     {
         $usuario = Auth::user();
         
-        // Filtros
         $fechaInicio = $request->input('fecha_inicio', now()->startOfMonth()->format('Y-m-d'));
         $fechaFin = $request->input('fecha_fin', now()->endOfMonth()->format('Y-m-d'));
         
@@ -58,15 +57,16 @@ class InformeController extends Controller
         
         // Transacciones por día
         $transaccionesPorDia = Transaccion::select(
-                'fecha',
-                DB::raw('SUM(CASE WHEN tipo = "ingreso" THEN monto ELSE 0 END) as ingresos'),
-                DB::raw('SUM(CASE WHEN tipo = "gasto" THEN monto ELSE 0 END) as gastos')
+                'transacciones.fecha',
+                // --- CAMBIO AQUÍ DENTRO DEL RAW ---
+                DB::raw('SUM(CASE WHEN transacciones.tipo = "ingreso" THEN transacciones.monto ELSE 0 END) as ingresos'),
+                DB::raw('SUM(CASE WHEN transacciones.tipo = "gasto" THEN transacciones.monto ELSE 0 END) as gastos')
             )
             ->join('cuentas', 'transacciones.id_cuenta', '=', 'cuentas.id_cuenta')
             ->where('cuentas.id_usuario', $usuario->id_usuario)
-            ->whereBetween('fecha', [$fechaInicio, $fechaFin])
-            ->groupBy('fecha')
-            ->orderBy('fecha')
+            ->whereBetween('transacciones.fecha', [$fechaInicio, $fechaFin])
+            ->groupBy('transacciones.fecha')
+            ->orderBy('transacciones.fecha')
             ->get();
         
         return view('informes.index', compact(

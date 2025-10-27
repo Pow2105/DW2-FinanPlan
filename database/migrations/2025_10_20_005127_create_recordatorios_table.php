@@ -6,20 +6,20 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('recordatorios', function (Blueprint $table) {
-            $table->id();
+            $table->id('id_recordatorio');
+            $table->foreignId('id_usuario')->constrained('usuarios', 'id_usuario')->onDelete('cascade');
+            $table->string('descripcion', 255);
+            $table->decimal('monto', 15, 2);
+            $table->date('fecha_vencimiento');
+            $table->enum('frecuencia', ['unica', 'mensual', 'anual']);
+            $table->enum('estado', ['pendiente', 'notificado', 'completado'])->default('pendiente');
             $table->timestamps();
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('recordatorios');
