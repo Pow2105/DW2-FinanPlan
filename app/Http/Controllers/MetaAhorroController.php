@@ -3,8 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Models\MetaAhorro;
+use App\Models\Cuenta;
+use App\Models\Transaccion;
+use App\Models\Categoria;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class MetaAhorroController extends Controller
 {
@@ -13,10 +17,6 @@ class MetaAhorroController extends Controller
         $metas = MetaAhorro::where('id_usuario', Auth::user()->id_usuario)
             ->orderBy('fecha_limite', 'asc')
             ->get();
-
-        foreach ($metas as $meta) {
-            $meta->porcentaje = $meta->porcentajeProgreso();
-        }
 
         return view('metas.index', compact('metas'));
     }
@@ -30,7 +30,7 @@ class MetaAhorroController extends Controller
     {
         $request->validate([
             'nombre_meta' => 'required|string|max:100',
-            'monto_objetivo' => 'required|numeric|min:0',
+            'monto_objetivo' => 'required|numeric|min:0.01',
             'fecha_limite' => 'required|date|after:today',
         ]);
 
@@ -49,8 +49,12 @@ class MetaAhorroController extends Controller
 
     public function show(MetaAhorro $meta)
     {
-        $meta->porcentaje = $meta->porcentajeProgreso();
-        return view('metas.show', compact('meta'));
+        // Pasamos cuentas y categorías para el formulario de "Añadir Fondos"
+        $cuentas = Cuenta::where('id_usuario', Auth::user()->id_usuario)->get();
+        // Buscamos categorías de tipo 'gasto' para clasificar el ahorro
+        $categorias = Categoria::where('tipo', 'gasto')->get();
+        
+        return view('metas.show', compact('meta', 'cuentas', 'categorias'));
     }
 
     public function edit(MetaAhorro $meta)
@@ -62,7 +66,7 @@ class MetaAhorroController extends Controller
     {
         $request->validate([
             'nombre_meta' => 'required|string|max:100',
-            'monto_objetivo' => 'required|numeric|min:0',
+            'monto_objetivo' => 'required|numeric|min:0.01',
             'fecha_limite' => 'required|date',
         ]);
 
@@ -76,23 +80,47 @@ class MetaAhorroController extends Controller
             ->with('success', 'Meta actualizada exitosamente.');
     }
 
+    /**
+     * MEJORA PRINCIPAL: Ahorro Real conectado a Cuentas
+     */
     public function addFunds(Request $request, MetaAhorro $meta)
     {
         $request->validate([
             'monto' => 'required|numeric|min:0.01',
+            'id_cuenta' => 'required|exists:cuentas,id_cuenta',
+            'id_categoria' => 'required|exists:categorias,id_categoria',
         ]);
 
-        $meta->monto_actual += $request->monto;
-        
-        // Verificar si completó la meta
-        if ($meta->monto_actual >= $meta->monto_objetivo) {
-            $meta->estado = 'completada';
-        }
+        DB::transaction(function () use ($request, $meta) {
+            $monto = round($request->monto, 2);
 
-        $meta->save();
+            // 1. Descontar de la Cuenta (Dinero real sale)
+            $cuenta = Cuenta::find($request->id_cuenta);
+            $cuenta->saldo_actual = round($cuenta->saldo_actual - $monto, 2);
+            $cuenta->save();
+
+            // 2. Sumar a la Meta (Ahorro aumenta)
+            $meta->monto_actual = round($meta->monto_actual + $monto, 2);
+            
+            // Actualizar estado si se completó
+            if ($meta->monto_actual >= $meta->monto_objetivo) {
+                $meta->estado = 'completada';
+            }
+            $meta->save();
+
+            // 3. Registrar Transacción (Para el historial)
+            Transaccion::create([
+                'id_cuenta' => $cuenta->id_cuenta,
+                'id_categoria' => $request->id_categoria,
+                'tipo' => 'gasto', // Se considera gasto porque sale de la cuenta disponible
+                'monto' => $monto,
+                'fecha' => now(),
+                'descripcion' => "Ahorro para meta: " . $meta->nombre_meta,
+            ]);
+        });
 
         return redirect()->route('metas.show', $meta->id_meta)
-            ->with('success', 'Ahorro añadido exitosamente.');
+            ->with('success', '¡Ahorro registrado! Se descontó de tu cuenta correctamente.');
     }
 
     public function destroy(MetaAhorro $meta)
