@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\DB; // Necesario para consultas raw
 
 class Presupuesto extends Model
 {
@@ -22,6 +21,7 @@ class Presupuesto extends Model
     protected $casts = [
         'fecha_inicio' => 'date',
         'fecha_fin' => 'date',
+        'monto_limite' => 'decimal:2', // Aseguramos precisión
     ];
 
     public function usuario()
@@ -34,7 +34,10 @@ class Presupuesto extends Model
         return $this->belongsTo(Categoria::class, 'id_categoria', 'id_categoria');
     }
 
-    // Método para calcular el gasto actual dentro del período del presupuesto
+    /**
+     * Calcula cuánto se ha gastado en esta categoría dentro del periodo.
+     * Esta es la función CLAVE que hace útil al presupuesto.
+     */
     public function gastoActual()
     {
         return Transaccion::where('id_categoria', $this->id_categoria)
@@ -42,7 +45,32 @@ class Presupuesto extends Model
                 $query->where('id_usuario', $this->id_usuario);
             })
             ->where('tipo', 'gasto')
+            // Filtramos estrictamente por las fechas del presupuesto
             ->whereBetween('fecha', [$this->fecha_inicio, $this->fecha_fin])
             ->sum('monto');
+    }
+
+    /**
+     * Calcula el porcentaje de ejecución del presupuesto.
+     */
+    public function porcentaje()
+    {
+        $gasto = $this->gastoActual();
+        if ($this->monto_limite > 0) {
+            return round(($gasto / $this->monto_limite) * 100, 2);
+        }
+        return 0;
+    }
+
+    /**
+     * Determina el estado real basado en el gasto.
+     */
+    public function getEstadoRealAttribute()
+    {
+        $porcentaje = $this->porcentaje();
+        
+        if ($porcentaje >= 100) return 'excedido';
+        if ($porcentaje >= 80) return 'alerta';
+        return 'activo';
     }
 }

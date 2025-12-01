@@ -17,19 +17,13 @@ class PresupuestoController extends Controller
             ->orderBy('fecha_inicio', 'desc')
             ->get();
 
-        // Calcular progreso de cada presupuesto
-        foreach ($presupuestos as $presupuesto) {
-            $presupuesto->gasto_actual = $presupuesto->gastoActual();
-            $presupuesto->porcentaje = ($presupuesto->monto_limite > 0) 
-                ? round(($presupuesto->gasto_actual / $presupuesto->monto_limite) * 100, 2) 
-                : 0;
-        }
-
+        // No necesitamos hacer cálculos aquí, la vista llamará a los métodos del modelo
         return view('presupuestos.index', compact('presupuestos'));
     }
 
     public function create()
     {
+        // Solo permitimos crear presupuestos para categorías de GASTO
         $categorias = Categoria::where('tipo', 'gasto')->get();
         return view('presupuestos.create', compact('categorias'));
     }
@@ -38,9 +32,9 @@ class PresupuestoController extends Controller
     {
         $request->validate([
             'id_categoria' => 'required|exists:categorias,id_categoria',
-            'monto_limite' => 'required|numeric|min:0',
+            'monto_limite' => 'required|numeric|min:0.01',
             'fecha_inicio' => 'required|date',
-            'fecha_fin' => 'required|date|after:fecha_inicio',
+            'fecha_fin' => 'required|date|after_or_equal:fecha_inicio',
         ]);
 
         Presupuesto::create([
@@ -58,16 +52,21 @@ class PresupuestoController extends Controller
 
     public function show(Presupuesto $presupuesto)
     {
+        // Verificar que el presupuesto pertenece al usuario
+        if ($presupuesto->id_usuario !== Auth::id()) {
+            abort(403);
+        }
+
         $presupuesto->load('categoria');
-        $presupuesto->gasto_actual = $presupuesto->gastoActual();
         
-        // Obtener transacciones relacionadas
+        // Obtener transacciones que afectan a este presupuesto
         $transacciones = Transaccion::whereHas('cuenta', function($query) {
                 $query->where('id_usuario', Auth::user()->id_usuario);
             })
             ->where('id_categoria', $presupuesto->id_categoria)
             ->where('tipo', 'gasto')
             ->whereBetween('fecha', [$presupuesto->fecha_inicio, $presupuesto->fecha_fin])
+            ->with('cuenta') // Traer cuenta para mostrar nombre
             ->orderBy('fecha', 'desc')
             ->get();
 
@@ -76,17 +75,21 @@ class PresupuestoController extends Controller
 
     public function edit(Presupuesto $presupuesto)
     {
+        if ($presupuesto->id_usuario !== Auth::id()) abort(403);
+        
         $categorias = Categoria::where('tipo', 'gasto')->get();
         return view('presupuestos.edit', compact('presupuesto', 'categorias'));
     }
 
     public function update(Request $request, Presupuesto $presupuesto)
     {
+        if ($presupuesto->id_usuario !== Auth::id()) abort(403);
+
         $request->validate([
             'id_categoria' => 'required|exists:categorias,id_categoria',
-            'monto_limite' => 'required|numeric|min:0',
+            'monto_limite' => 'required|numeric|min:0.01',
             'fecha_inicio' => 'required|date',
-            'fecha_fin' => 'required|date|after:fecha_inicio',
+            'fecha_fin' => 'required|date|after_or_equal:fecha_inicio',
         ]);
 
         $presupuesto->update([
@@ -102,6 +105,8 @@ class PresupuestoController extends Controller
 
     public function destroy(Presupuesto $presupuesto)
     {
+        if ($presupuesto->id_usuario !== Auth::id()) abort(403);
+        
         $presupuesto->delete();
 
         return redirect()->route('presupuestos.index')
