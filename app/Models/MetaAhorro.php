@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
 class MetaAhorro extends Model
 {
@@ -20,6 +21,8 @@ class MetaAhorro extends Model
 
     protected $casts = [
         'fecha_limite' => 'date',
+        'monto_objetivo' => 'decimal:2',
+        'monto_actual' => 'decimal:2',
     ];
 
     public function usuario()
@@ -33,5 +36,24 @@ class MetaAhorro extends Model
             return round(($this->monto_actual / $this->monto_objetivo) * 100, 2);
         }
         return 0;
+    }
+
+    /**
+     * Calcula el estado dinámico de la meta.
+     * Prioriza si ya está completada, luego verifica fechas.
+     */
+    public function getEstadoRealAttribute()
+    {
+        // Si ya se alcanzó el monto, está completada
+        if ($this->monto_actual >= $this->monto_objetivo) {
+            return 'completada';
+        }
+
+        // Si la fecha ya pasó (ayer o antes) y no se ha completado
+        if ($this->fecha_limite->isPast() && !$this->fecha_limite->isToday()) {
+            return 'vencida';
+        }
+
+        return 'en_progreso';
     }
 }

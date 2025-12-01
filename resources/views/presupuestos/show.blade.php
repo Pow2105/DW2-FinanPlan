@@ -4,7 +4,6 @@
 
 @section('content')
 <div class="space-y-6">
-    <!-- Header -->
     <div class="flex justify-between items-center">
         <h1 class="text-3xl font-bold text-gray-900">
             <span class="text-3xl mr-2">{{ $presupuesto->categoria->icono ?? '📊' }}</span>
@@ -22,9 +21,15 @@
         </div>
     </div>
 
-    <!-- Información del Presupuesto -->
+    @php
+        // CÁLCULOS EN VIVO USANDO EL MODELO
+        $gastoActual = $presupuesto->gastoActual();
+        $porcentaje = $presupuesto->porcentaje();
+        $disponible = max($presupuesto->monto_limite - $gastoActual, 0);
+        $excedente = max($gastoActual - $presupuesto->monto_limite, 0);
+    @endphp
+
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <!-- Período -->
         <div class="bg-white rounded-lg shadow-lg p-6">
             <div class="text-sm text-gray-600 mb-2">
                 <i class="fas fa-calendar-alt mr-2"></i>Período
@@ -38,7 +43,6 @@
             </div>
         </div>
 
-        <!-- Límite -->
         <div class="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg shadow-lg p-6 text-white">
             <div class="text-sm opacity-80 mb-2">
                 <i class="fas fa-tag mr-2"></i>Monto Límite
@@ -48,46 +52,37 @@
             </div>
         </div>
 
-        <!-- Gastado -->
         <div class="bg-gradient-to-r from-orange-500 to-orange-600 rounded-lg shadow-lg p-6 text-white">
             <div class="text-sm opacity-80 mb-2">
                 <i class="fas fa-shopping-cart mr-2"></i>Total Gastado
             </div>
             <div class="text-3xl font-bold">
-                ${{ number_format($presupuesto->gasto_actual, 2) }}
+                ${{ number_format($gastoActual, 2) }}
             </div>
         </div>
 
-        <!-- Disponible -->
-        <div class="bg-gradient-to-r from-green-500 to-green-600 rounded-lg shadow-lg p-6 text-white">
+        <div class="bg-gradient-to-r {{ $disponible > 0 ? 'from-green-500 to-green-600' : 'from-red-500 to-red-600' }} rounded-lg shadow-lg p-6 text-white">
             <div class="text-sm opacity-80 mb-2">
-                <i class="fas fa-wallet mr-2"></i>Disponible
+                <i class="fas fa-wallet mr-2"></i>{{ $disponible > 0 ? 'Disponible' : 'Excedido' }}
             </div>
             <div class="text-3xl font-bold">
-                ${{ number_format(max($presupuesto->monto_limite - $presupuesto->gasto_actual, 0), 2) }}
+                ${{ number_format($disponible > 0 ? $disponible : $excedente, 2) }}
             </div>
         </div>
     </div>
 
-    <!-- Progreso del Presupuesto -->
     <div class="bg-white rounded-lg shadow-lg p-6">
         <h3 class="text-lg font-semibold text-gray-900 mb-4">
             <i class="fas fa-chart-line mr-2 text-blue-600"></i>
             Progreso del Presupuesto
         </h3>
-        
-        @php
-            $porcentaje = ($presupuesto->monto_limite > 0) 
-                ? round(($presupuesto->gasto_actual / $presupuesto->monto_limite) * 100, 2) 
-                : 0;
-        @endphp
 
         <div class="mb-4">
             <div class="flex justify-between text-sm mb-2">
                 <span class="font-medium text-gray-700">Utilización</span>
-                <span class="font-semibold">{{ $porcentaje }}%</span>
+                <span class="font-semibold {{ $porcentaje >= 100 ? 'text-red-600' : 'text-blue-600' }}">{{ $porcentaje }}%</span>
             </div>
-            <div class="w-full bg-gray-200 rounded-full h-6">
+            <div class="w-full bg-gray-200 rounded-full h-6 overflow-hidden">
                 <div class="h-6 rounded-full transition-all duration-300 flex items-center justify-end pr-2
                     {{ $porcentaje < 80 ? 'bg-green-500' : '' }}
                     {{ $porcentaje >= 80 && $porcentaje < 100 ? 'bg-yellow-500' : '' }}
@@ -100,7 +95,6 @@
             </div>
         </div>
 
-        <!-- Alertas -->
         @if($porcentaje >= 100)
             <div class="p-4 bg-red-50 border border-red-200 rounded-lg">
                 <div class="flex items-start">
@@ -108,7 +102,7 @@
                     <div>
                         <h4 class="font-semibold text-red-900 mb-1">¡Presupuesto Excedido!</h4>
                         <p class="text-sm text-red-800">
-                            Has gastado ${{ number_format($presupuesto->gasto_actual - $presupuesto->monto_limite, 2) }} 
+                            Has gastado ${{ number_format($excedente, 2) }} 
                             por encima de tu límite. Considera reducir gastos en esta categoría.
                         </p>
                     </div>
@@ -121,7 +115,7 @@
                     <div>
                         <h4 class="font-semibold text-yellow-900 mb-1">Acercándose al Límite</h4>
                         <p class="text-sm text-yellow-800">
-                            Te quedan ${{ number_format($presupuesto->monto_limite - $presupuesto->gasto_actual, 2) }} 
+                            Te quedan ${{ number_format($disponible, 2) }} 
                             antes de alcanzar tu límite. ¡Controla tus gastos!
                         </p>
                     </div>
@@ -135,7 +129,7 @@
                         <h4 class="font-semibold text-green-900 mb-1">¡Vas Muy Bien!</h4>
                         <p class="text-sm text-green-800">
                             Tu presupuesto está controlado. Sigues teniendo 
-                            ${{ number_format($presupuesto->monto_limite - $presupuesto->gasto_actual, 2) }} disponibles.
+                            ${{ number_format($disponible, 2) }} disponibles.
                         </p>
                     </div>
                 </div>
@@ -143,7 +137,6 @@
         @endif
     </div>
 
-    <!-- Transacciones Relacionadas -->
     <div class="bg-white rounded-lg shadow-lg overflow-hidden">
         <div class="p-6 border-b">
             <h3 class="text-lg font-semibold text-gray-900">
