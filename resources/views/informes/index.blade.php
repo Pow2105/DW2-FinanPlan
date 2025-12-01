@@ -4,70 +4,53 @@
 
 @section('content')
 <div class="space-y-6">
-    <!-- Header -->
-    <div class="flex justify-between items-center">
+    <div class="flex flex-col md:flex-row justify-between items-center gap-4">
         <h1 class="text-3xl font-bold text-gray-900">
             <i class="fas fa-chart-bar mr-2 text-blue-600"></i>
-            Informes Financieros
+            {{ $tituloInforme }}
         </h1>
+        
+        <div class="bg-white rounded-lg shadow-sm p-2 flex items-center gap-2">
+            <form method="GET" action="{{ route('informes.index') }}" class="flex items-center gap-2">
+                <label for="mes" class="text-sm font-medium text-gray-600 hidden sm:block">Filtrar:</label>
+                <input type="month" 
+                       id="mes" 
+                       name="mes" 
+                       value="{{ $mesSeleccionado }}"
+                       class="px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500"
+                       onchange="this.form.submit()">
+            </form>
+            
+            @if($esInformeMensual)
+                <div class="h-6 w-px bg-gray-300 mx-1"></div>
+                <a href="{{ route('informes.index') }}" 
+                   class="text-sm text-red-600 hover:text-red-800 font-semibold px-2 py-1.5 rounded hover:bg-red-50 transition">
+                    <i class="fas fa-times mr-1"></i>Ver General
+                </a>
+            @endif
+        </div>
     </div>
 
-    <!-- Filtros -->
-    <div class="bg-white rounded-lg shadow-lg p-6">
-        <form method="GET" action="{{ route('informes.index') }}" class="flex flex-wrap gap-4">
-            <div class="flex-1 min-w-[200px]">
-                <label for="fecha_inicio" class="block text-sm font-medium text-gray-700 mb-2">
-                    <i class="fas fa-calendar-alt mr-2"></i>Fecha Inicio
-                </label>
-                <input type="date" 
-                       id="fecha_inicio" 
-                       name="fecha_inicio" 
-                       value="{{ $fechaInicio }}"
-                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-            </div>
-            <div class="flex-1 min-w-[200px]">
-                <label for="fecha_fin" class="block text-sm font-medium text-gray-700 mb-2">
-                    <i class="fas fa-calendar-check mr-2"></i>Fecha Fin
-                </label>
-                <input type="date" 
-                       id="fecha_fin" 
-                       name="fecha_fin" 
-                       value="{{ $fechaFin }}"
-                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-            </div>
-            <div class="flex items-end">
-                <button type="submit" 
-                        class="bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-700 transition">
-                    <i class="fas fa-filter mr-2"></i>Filtrar
-                </button>
-            </div>
-        </form>
-    </div>
-
-    <!-- Resumen General -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <!-- Ingresos -->
         <div class="bg-gradient-to-r from-green-500 to-green-600 rounded-lg shadow-lg p-6 text-white">
             <div class="flex items-center justify-between mb-2">
-                <div class="text-sm opacity-80">Total Ingresos</div>
+                <div class="text-sm opacity-80">{{ $esInformeMensual ? 'Ingresos del Mes' : 'Ingresos Totales' }}</div>
                 <i class="fas fa-arrow-up text-2xl opacity-80"></i>
             </div>
             <div class="text-3xl font-bold">${{ number_format($totalIngresos, 2) }}</div>
         </div>
 
-        <!-- Gastos -->
         <div class="bg-gradient-to-r from-red-500 to-red-600 rounded-lg shadow-lg p-6 text-white">
             <div class="flex items-center justify-between mb-2">
-                <div class="text-sm opacity-80">Total Gastos</div>
+                <div class="text-sm opacity-80">{{ $esInformeMensual ? 'Gastos del Mes' : 'Gastos Totales' }}</div>
                 <i class="fas fa-arrow-down text-2xl opacity-80"></i>
             </div>
             <div class="text-3xl font-bold">${{ number_format($totalGastos, 2) }}</div>
         </div>
 
-        <!-- Balance -->
         <div class="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg shadow-lg p-6 text-white">
             <div class="flex items-center justify-between mb-2">
-                <div class="text-sm opacity-80">Balance</div>
+                <div class="text-sm opacity-80">{{ $esInformeMensual ? 'Balance del Mes' : 'Balance Global' }}</div>
                 <i class="fas fa-balance-scale text-2xl opacity-80"></i>
             </div>
             <div class="text-3xl font-bold">
@@ -76,9 +59,8 @@
         </div>
     </div>
 
-    <!-- Gráficos -->
+    @if(count($gastosPorCategoria) > 0 || count($ingresosPorCategoria) > 0)
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <!-- Gastos por Categoría -->
         <div class="bg-white rounded-lg shadow-lg p-6">
             <h3 class="text-lg font-semibold text-gray-900 mb-4">
                 <i class="fas fa-chart-pie mr-2 text-blue-600"></i>
@@ -89,7 +71,6 @@
             </div>
         </div>
 
-        <!-- Ingresos por Categoría -->
         <div class="bg-white rounded-lg shadow-lg p-6">
             <h3 class="text-lg font-semibold text-gray-900 mb-4">
                 <i class="fas fa-chart-pie mr-2 text-green-600"></i>
@@ -100,199 +81,151 @@
             </div>
         </div>
     </div>
-
-    <!-- Flujo de Efectivo -->
+    
     <div class="bg-white rounded-lg shadow-lg p-6">
         <h3 class="text-lg font-semibold text-gray-900 mb-4">
             <i class="fas fa-chart-line mr-2 text-blue-600"></i>
-            Flujo de Efectivo
+            {{ $esInformeMensual ? 'Flujo Diario' : 'Tendencia Mensual (Último Año)' }}
         </h3>
         <div class="h-80">
-            <canvas id="flujoChart"></canvas>
+             <canvas id="flujoChart"></canvas>
         </div>
     </div>
-
-    <!-- Detalle por Categorías -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <!-- Tabla de Gastos -->
-        <div class="bg-white rounded-lg shadow-lg overflow-hidden">
-            <div class="p-6 border-b bg-red-50">
-                <h3 class="text-lg font-semibold text-gray-900">
-                    <i class="fas fa-list mr-2 text-red-600"></i>
-                    Detalle de Gastos
-                </h3>
-            </div>
-            <div class="p-6">
-                <table class="w-full">
-                    <thead>
-                        <tr class="border-b">
-                            <th class="text-left py-2">Categoría</th>
-                            <th class="text-right py-2">Monto</th>
-                            <th class="text-right py-2">%</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @forelse($gastosPorCategoria as $gasto)
-                            <tr class="border-b hover:bg-gray-50">
-                                <td class="py-3">
-                                    <span class="text-lg mr-2">{{ $gasto->icono }}</span>
-                                    {{ $gasto->nombre }}
-                                </td>
-                                <td class="text-right font-semibold text-red-600">
-                                    ${{ number_format($gasto->total, 2) }}
-                                </td>
-                                <td class="text-right text-gray-600">
-                                    {{ $totalGastos > 0 ? round(($gasto->total / $totalGastos) * 100, 1) : 0 }}%
-                                </td>
-                            </tr>
-                        @empty
-                            <tr>
-                                <td colspan="3" class="text-center py-4 text-gray-500">
-                                    No hay gastos en este período
-                                </td>
-                            </tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
+    @else
+        <div class="bg-white rounded-lg shadow-lg p-10 text-center text-gray-500">
+            <i class="fas fa-chart-area text-6xl mb-4 opacity-20"></i>
+            <p class="text-xl">No hay datos registrados para mostrar gráficas.</p>
         </div>
+    @endif
 
-        <!-- Tabla de Ingresos -->
-        <div class="bg-white rounded-lg shadow-lg overflow-hidden">
-            <div class="p-6 border-b bg-green-50">
-                <h3 class="text-lg font-semibold text-gray-900">
-                    <i class="fas fa-list mr-2 text-green-600"></i>
-                    Detalle de Ingresos
-                </h3>
-            </div>
-            <div class="p-6">
-                <table class="w-full">
-                    <thead>
-                        <tr class="border-b">
-                            <th class="text-left py-2">Categoría</th>
-                            <th class="text-right py-2">Monto</th>
-                            <th class="text-right py-2">%</th>
+    <div class="bg-white rounded-lg shadow-lg overflow-hidden mt-6">
+        <div class="p-6 border-b bg-gray-50 flex justify-between items-center">
+            <h3 class="text-lg font-bold text-gray-800">
+                <i class="fas fa-receipt mr-2 text-red-500"></i>
+                {{ $esInformeMensual ? 'Detalle de Gastos del Mes' : 'Últimos Gastos Registrados' }}
+            </h3>
+            <span class="text-xs font-semibold px-2 py-1 bg-gray-200 rounded text-gray-700">
+                {{ count($gastosDetallados) }} Registros
+            </span>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead class="bg-gray-100 border-b">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Fecha</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Categoría</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Descripción</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Cuenta</th>
+                        <th class="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase">Monto</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                    @forelse($gastosDetallados as $gasto)
+                        <tr class="hover:bg-gray-50 transition">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
+                                {{ $gasto->fecha->format('d/m/Y') }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full" 
+                                      style="background-color: {{ $gasto->categoria->color }}20; color: {{ $gasto->categoria->color }}">
+                                    {{ $gasto->categoria->icono }} {{ $gasto->categoria->nombre }}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 text-sm text-gray-500">
+                                {{ $gasto->descripcion ?? '-' }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {{ $gasto->cuenta->nombre }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-red-600 text-right">
+                                - ${{ number_format($gasto->monto, 2) }}
+                            </td>
                         </tr>
-                    </thead>
-                    <tbody>
-                        @forelse($ingresosPorCategoria as $ingreso)
-                            <tr class="border-b hover:bg-gray-50">
-                                <td class="py-3">
-                                    <span class="text-lg mr-2">{{ $ingreso->icono }}</span>
-                                    {{ $ingreso->nombre }}
-                                </td>
-                                <td class="text-right font-semibold text-green-600">
-                                    ${{ number_format($ingreso->total, 2) }}
-                                </td>
-                                <td class="text-right text-gray-600">
-                                    {{ $totalIngresos > 0 ? round(($ingreso->total / $totalIngresos) * 100, 1) : 0 }}%
-                                </td>
-                            </tr>
-                        @empty
-                            <tr>
-                                <td colspan="3" class="text-center py-4 text-gray-500">
-                                    No hay ingresos en este período
-                                </td>
-                            </tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
+                    @empty
+                        <tr>
+                            <td colspan="5" class="px-6 py-8 text-center text-gray-500">
+                                No se encontraron registros.
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
         </div>
     </div>
 </div>
 
 @push('scripts')
 <script>
-    // Datos para los gráficos
     const gastosData = {!! json_encode($gastosPorCategoria) !!};
     const ingresosData = {!! json_encode($ingresosPorCategoria) !!};
     const flujoData = {!! json_encode($transaccionesPorDia) !!};
+    const esMensual = {!! json_encode($esInformeMensual) !!};
 
-    // Gráfico de Gastos
-    const ctxGastos = document.getElementById('gastosChart');
-    new Chart(ctxGastos, {
-        type: 'doughnut',
-        data: {
-            labels: gastosData.map(item => item.nombre),
-            datasets: [{
-                data: gastosData.map(item => item.total),
-                backgroundColor: gastosData.map(item => item.color),
-                borderWidth: 2
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'bottom'
-                }
-            }
-        }
-    });
+    const emptyDoughnut = { datasets: [{ data: [1], backgroundColor: ['#f3f4f6'] }], labels: ['Sin datos'] };
 
-    // Gráfico de Ingresos
-    const ctxIngresos = document.getElementById('ingresosChart');
-    new Chart(ctxIngresos, {
-        type: 'doughnut',
-        data: {
-            labels: ingresosData.map(item => item.nombre),
-            datasets: [{
-                data: ingresosData.map(item => item.total),
-                backgroundColor: ingresosData.map(item => item.color),
-                borderWidth: 2
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'bottom'
-                }
-            }
-        }
-    });
+    // Gráficos de Dona
+    const createDoughnut = (ctx, data) => {
+        if (!ctx) return;
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: data.length ? {
+                labels: data.map(item => item.nombre),
+                datasets: [{
+                    data: data.map(item => item.total),
+                    backgroundColor: data.map(item => item.color),
+                    borderWidth: 2
+                }]
+            } : emptyDoughnut,
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+        });
+    };
 
-    // Gráfico de Flujo
+    createDoughnut(document.getElementById('gastosChart'), gastosData);
+    createDoughnut(document.getElementById('ingresosChart'), ingresosData);
+
+    // Gráfico de Línea (Inteligente: Días o Meses)
     const ctxFlujo = document.getElementById('flujoChart');
-    new Chart(ctxFlujo, {
-        type: 'line',
-        data: {
-            labels: flujoData.map(item => new Date(item.fecha).toLocaleDateString()),
-            datasets: [
-                {
-                    label: 'Ingresos',
-                    data: flujoData.map(item => item.ingresos),
-                    borderColor: 'rgb(34, 197, 94)',
-                    backgroundColor: 'rgba(34, 197, 94, 0.1)',
-                    tension: 0.4
-                },
-                {
-                    label: 'Gastos',
-                    data: flujoData.map(item => item.gastos),
-                    borderColor: 'rgb(239, 68, 68)',
-                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                    tension: 0.4
-                }
-            ]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'top'
-                }
+    if (ctxFlujo && flujoData.length > 0) {
+        new Chart(ctxFlujo, {
+            type: 'line',
+            data: {
+                labels: flujoData.map(item => {
+                    // Si es mensual mostramos "Día X", si es general mostramos "Mes Año"
+                    const date = new Date(item.fecha_grupo + (esMensual ? '' : '-02')); // Hack para parsear YYYY-MM
+                    // Ajuste zona horaria simple
+                    date.setMinutes(date.getMinutes() + date.getTimezoneOffset());
+                    
+                    if (esMensual) return date.getDate(); // Solo día
+                    return date.toLocaleDateString('es-ES', { month: 'short', year: 'numeric' }); // "Ene 2025"
+                }),
+                datasets: [
+                    {
+                        label: 'Ingresos',
+                        data: flujoData.map(item => item.ingresos),
+                        borderColor: 'rgb(34, 197, 94)',
+                        backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                        tension: 0.3, fill: true
+                    },
+                    {
+                        label: 'Gastos',
+                        data: flujoData.map(item => item.gastos),
+                        borderColor: 'rgb(239, 68, 68)',
+                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                        tension: 0.3, fill: true
+                    }
+                ]
             },
-            scales: {
-                y: {
-                    beginAtZero: true
-                }
+            options: { 
+                responsive: true, 
+                maintainAspectRatio: false, 
+                plugins: { legend: { position: 'top' } }, 
+                scales: { 
+                    y: { beginAtZero: true },
+                    x: { title: { display: true, text: esMensual ? 'Día del Mes' : 'Periodo' } }
+                } 
             }
-        }
-    });
+        });
+    }
 </script>
 @endpush
 @endsection
