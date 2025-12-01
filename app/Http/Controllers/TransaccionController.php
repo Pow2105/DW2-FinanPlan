@@ -84,6 +84,42 @@ class TransaccionController extends Controller
         ]);
 
         DB::transaction(function () use ($request, $transaccion) {
+            // 1. Revertir el saldo en la cuenta ORIGINAL
+            $cuentaOriginal = Cuenta::find($transaccion->id_cuenta);
+            if ($transaccion->tipo == 'ingreso') {
+                $cuentaOriginal->saldo_actual -= $transaccion->monto;
+            } else {
+                $cuentaOriginal->saldo_actual += $transaccion->monto;
+            }
+            $cuentaOriginal->save(); // Guardamos el revertido inmediatamente
+
+            // 2. Actualizar transacción con los nuevos datos
+            $transaccion->update([
+                'id_cuenta' => $request->id_cuenta,
+                'id_categoria' => $request->id_categoria,
+                'monto' => $request->monto,
+                'fecha' => $request->fecha,
+                'tipo' => $request->tipo,
+                'descripcion' => $request->descripcion,
+            ]);
+
+            // 3. Aplicar nuevo saldo a la cuenta NUEVA (o la misma si no cambió)
+            // Buscamos la cuenta fresca usando el ID que viene del formulario
+            $cuentaDestino = Cuenta::find($request->id_cuenta);
+            
+            if ($request->tipo == 'ingreso') {
+                $cuentaDestino->saldo_actual += $request->monto;
+            } else {
+                $cuentaDestino->saldo_actual -= $request->monto;
+            }
+            $cuentaDestino->save();
+        });
+
+        return redirect()->route('transacciones.index')
+            ->with('success', 'Transacción actualizada exitosamente.');
+    }
+
+        DB::transaction(function () use ($request, $transaccion) {
             // Revertir el saldo anterior
             $cuenta = Cuenta::find($transaccion->id_cuenta);
             if ($transaccion->tipo == 'ingreso') {
