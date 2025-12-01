@@ -35,7 +35,9 @@ Route::middleware('auth')->group(function () {
     Route::resource('cuentas', CuentaController::class);
     
     // Transacciones
-    Route::resource('transacciones', TransaccionController::class);
+    Route::resource('transacciones', TransaccionController::class)->parameters([
+        'transacciones' => 'transaccion'
+    ]);
     
     // Presupuestos
     Route::resource('presupuestos', PresupuestoController::class);
