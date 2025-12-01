@@ -119,38 +119,6 @@ class TransaccionController extends Controller
             ->with('success', 'Transacción actualizada exitosamente.');
     }
 
-        DB::transaction(function () use ($request, $transaccion) {
-            // Revertir el saldo anterior
-            $cuenta = Cuenta::find($transaccion->id_cuenta);
-            if ($transaccion->tipo == 'ingreso') {
-                $cuenta->saldo_actual -= $transaccion->monto;
-            } else {
-                $cuenta->saldo_actual += $transaccion->monto;
-            }
-
-            // Actualizar transacción
-            $transaccion->update([
-                'id_cuenta' => $request->id_cuenta,
-                'id_categoria' => $request->id_categoria,
-                'monto' => $request->monto,
-                'fecha' => $request->fecha,
-                'tipo' => $request->tipo,
-                'descripcion' => $request->descripcion,
-            ]);
-
-            // Aplicar nuevo saldo
-            if ($request->tipo == 'ingreso') {
-                $cuenta->saldo_actual += $request->monto;
-            } else {
-                $cuenta->saldo_actual -= $request->monto;
-            }
-            $cuenta->save();
-        });
-
-        return redirect()->route('transacciones.index')
-            ->with('success', 'Transacción actualizada exitosamente.');
-    }
-
     public function destroy(Transaccion $transaccion)
     {
         DB::transaction(function () use ($transaccion) {
