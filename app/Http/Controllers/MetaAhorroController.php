@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Rule;
 use App\Models\MetaAhorro;
 use App\Models\Cuenta;
 use App\Models\Transaccion;
@@ -85,9 +86,17 @@ class MetaAhorroController extends Controller
      */
     public function addFunds(Request $request, MetaAhorro $meta)
     {
+        if ($meta->id_usuario !== Auth::id()) abort(403);
+
         $request->validate([
             'monto' => 'required|numeric|min:0.01',
-            'id_cuenta' => 'required|exists:cuentas,id_cuenta',
+            // SEGURIDAD AQUÍ TAMBIÉN
+            'id_cuenta' => [
+                'required',
+                Rule::exists('cuentas', 'id_cuenta')->where(function ($query) {
+                    return $query->where('id_usuario', Auth::id());
+                }),
+            ],
             'id_categoria' => 'required|exists:categorias,id_categoria',
         ]);
 
